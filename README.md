@@ -1,5 +1,3 @@
-# directory Hotel Area Guide
-
 [![N|Solid](https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS_2xNcndqIMP1vKpf05m_c_BpnjiXx8gp9WPycBtMIuYEiJaXhnQ)](https://ufo-engineering.com/)
 
 For OpenCart 3.0.3
