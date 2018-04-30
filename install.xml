@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="utf-8"?>
+<modification>
+    <name>Product dimensions grid</name>
+    <code>dimensionsgrid</code>
+    <version>1.0</version>
+    <author>Ufo-engineering</author>
+    <link>https://ufo-engineering.com/</link>
+
+    <file path="catalog/controller/product/product.php">
+        <operation>
+            <search><![CDATA[
+            if ($product_info['minimum']) {
+            ]]></search>
+
+            <add position="before"><![CDATA[
+                $data['dimension_grid'] = $this->model_catalog_product->getProductOptionsBySize($this->request->get['product_id']);
+            ]]></add>
+        </operation>
+    </file>
+
+    <file path="catalog/controller/product/category.php">
+        <operation>
+            <search><![CDATA[
+            'name'        => $result['name'],
+            ]]></search>
+
+            <add position="before"><![CDATA[
+                'dimension_grid' => $this->model_catalog_product->getProductOptionsBySize($result['product_id']),
+            ]]></add>
+        </operation>
+    </file>
+
+    <file path="catalog/controller/extension/module/oclayerednavigation.php">
+        <operation>
+            <search><![CDATA[
+            'name'        => $result['name'],
+            ]]></search>
+
+            <add position="before"><![CDATA[
+                'dimension_grid' => $this->model_catalog_product->getProductOptionsBySize($result['product_id']),
+            ]]></add>
+        </operation>
+    </file>
+
+    <file path="catalog/model/catalog/product.php">
+        <operation>
+            <search><![CDATA[
+                public function getProductOptions($product_id) {
+                ]]></search>
+            <add position="before"><![CDATA[
+                public function getProductOptionsBySize($product_id) {
+            		$product_option_data = array();
+            		$product_size = $this->getProductSize();
+
+            		$product_option_data[0]['name'] = '';
+                    $product_option_data[0]['option_id'] = null;
+            		foreach ($product_size as $size) {
+            			$sise_id = (int)$size['id'];
+            			$product_option_data[0]['product_option_value'][$sise_id] = ['name'=>$size['name']];
+            		}
+
+            		$product_option_query = $this->db->query("SELECT * FROM " . DB_PREFIX . "product_option po LEFT JOIN `" . DB_PREFIX . "option` o ON (po.option_id = o.option_id) LEFT JOIN " . DB_PREFIX . "option_description od ON (o.option_id = od.option_id) WHERE po.product_id = '" . (int)$product_id . "' AND od.language_id = '" . (int)$this->config->get('config_language_id') . "' ORDER BY od.name");
+
+            		foreach ($product_option_query->rows as $product_option) {
+            			$product_option_value_data = $product_option_size_data = array();
+
+            			$product_option_value_query = $this->db->query("SELECT pov.*, ov.*, ovd.*, ps.name as size_name FROM " . DB_PREFIX . "product_option_value pov
+            			LEFT JOIN " . DB_PREFIX . "option_value ov ON (pov.option_value_id = ov.option_value_id)
+            			LEFT JOIN " . DB_PREFIX . "option_value_description ovd ON (ov.option_value_id = ovd.option_value_id)
+            			LEFT JOIN " . DB_PREFIX . "product_size ps ON (ps.id = pov.product_size_id)
+            			WHERE pov.product_id = '" . (int)$product_id . "'
+            			AND pov.product_option_id = '" . (int)$product_option['product_option_id'] . "'
+            			AND ovd.language_id = '" . (int)$this->config->get('config_language_id') . "'");
+
+            			foreach ($product_option_value_query->rows as $product_option_value) {
+            				$sise_id = (int)$product_option_value['product_size_id'];
+            				$product_option_value_data[$sise_id] = ['name' => $product_option_value['name']];
+            			}
+
+            			foreach ($product_size as $size) {
+            				$sise_id = (int)$size['id'];
+            				$product_option_size_data[$sise_id] = empty($product_option_value_data[$sise_id]) ? ['name' => '-'] : $product_option_value_data[$sise_id];
+            			}
+
+            			$product_option_data[] = array(
+            				'product_option_value' => $product_option_size_data,
+            				'name'                 => $product_option['name'],
+                            'id'                   => $product_option['option_id']
+            			);
+            		}
+
+            		return $product_option_data;
+            	}
+            ]]></add>
+        </operation>
+
+        <operation>
+            <search><![CDATA[
+                ORDER BY o.sort_order
+                ]]>
+            </search>
+            <add position="replace"><![CDATA[
+                ORDER BY od.name
+            ]]></add>
+        </operation>
+
+        <operation>
+            <search><![CDATA[
+                public function getProductAttributes($product_id) {
+                ]]>
+            </search>
+            <add position="before"><![CDATA[
+                public function getProductSize()
+            	{
+            		return $this->db->query("SELECT * FROM " . DB_PREFIX . "product_size ps ORDER BY ps.id")->rows;
+            	}
+            ]]></add>
+        </operation>
+
+    </file>
+
+    <file path="admin/controller/catalog/product.php">
+        <operation>
+            <search><![CDATA[
+                if (isset($this->request->post['product_option'])) {
+                ]]></search>
+            <add position="before"><![CDATA[
+                $data['product_size'] = $this->model_catalog_product->getProductSize();
+            ]]></add>
+        </operation>
+
+        <operation>
+            <search><![CDATA[
+                'subtract'                => $product_option_value['subtract'],
+                ]]></search>
+            <add position="after"><![CDATA[
+                'product_size_id'         => $product_option_value['product_size_id'],
+            ]]></add>
+        </operation>
+
+        <operation>
+            <search><![CDATA[
+                'price'                   => (float)$product_option_value['price'] ? $this->currency->format($product_option_value['price'], $this->config->get('config_currency')) : false,
+                ]]></search>
+            <add position="after"><![CDATA[
+                'product_size_id'         => $product_option_value['product_size_id'],
+            ]]></add>
+        </operation>
+    </file>
+
+    <file path="admin/model/catalog/product.php">
+        <operation>
+            <search><![CDATA[
+                public function addProduct($data) {
+                ]]></search>
+            <add position="before"><![CDATA[
+                public function getProductSize()
+            	{
+            		return $this->db->query("SELECT * FROM " . DB_PREFIX . "product_size ps ORDER BY ps.id")->rows;
+            	}
+            ]]></add>
+        </operation>
+
+        <operation>
+            <search><![CDATA[
+                "product_option_value SET
+                ]]></search>
+            <add position="replace"><![CDATA[
+                "product_option_value SET product_size_id = '" . (int)$product_option_value['product_size_id'] . "',
+            ]]></add>
+        </operation>
+
+        <operation>
+            <search><![CDATA[
+                'subtract'                => $product_option_value['subtract'],
+                ]]></search>
+            <add position="after"><![CDATA[
+                'product_size_id'         => $product_option_value['product_size_id'],
+            ]]></add>
+        </operation>
+
+        <operation>
+            <search><![CDATA[
+                pov.price,
+                ]]></search>
+            <add position="replace"><![CDATA[
+                pov.price, pov.product_size_id,
+            ]]></add>
+        </operation>
+    </file>
+
+</modification>
